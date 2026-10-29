@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>工艺参数推荐 · 本地合成工作台</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/app.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">跳到工作区</a>
+  <header class="page-header">
+    <div><p class="eyebrow">本地单 Agent · 行为克隆 BC · 人工审核</p><h1>工艺参数推荐工作台</h1></div>
+    <p id="provider-status" class="badge">尚未连接</p>
+  </header>
+  <aside id="synthetic-warning" class="safety-banner" role="note">
+    <strong>仅原创合成演示，绝非生产系统（NOT production）。禁止用于生产设备写入。</strong>
+    <p>上下文、知识、BC 训练、设备及效果均为合成内容。提交 ≠ 批准；批准 ≠ 执行请求；应用 ≠ 回读成功。模型解释不是权威参数，也不是现场因果证据。</p>
+  </aside>
+  <main id="main">
+    <section class="panel" aria-labelledby="session-title">
+      <div class="section-heading"><h2 id="session-title">连接与身份</h2><span id="session-status">未登录</span></div>
+      <form id="login-form" autocomplete="off">
+        <label for="token">本地访问令牌</label>
+        <div class="inline-fields"><input id="token" type="password" required maxlength="512" autocomplete="off" spellcheck="false" autocapitalize="off" aria-describedby="token-help"><button id="login-button" type="submit">连接工作台</button></div>
+        <p id="token-help" class="muted">令牌仅在本页内存中使用，不进入地址、浏览器存储或 Cookie。退出、刷新页面或离开页面后需要重新输入。</p>
+      </form>
+      <div id="session-controls" class="button-row" hidden><button id="reload-button" type="button">重载服务端状态</button><button id="logout-button" type="button" class="secondary">退出并清空</button></div>
+      <p id="message" role="status" aria-live="polite" aria-atomic="true"></p>
+      <p id="error-message" role="alert" aria-live="assertive" aria-atomic="true" hidden></p>
+    </section>
+    <div id="workbench" aria-busy="false" hidden>
+      <nav class="workbench-nav" aria-label="工作台分区"><a href="#context-panel">工艺与模型</a><a href="#task-panel">推荐任务</a><a href="#recommendation-panel">独立审核</a><a href="#execution-panel">合成执行与观察</a><a href="#audit-panel">审计</a></nav>
+      <div class="two-column">
+        <section id="context-panel" class="panel" aria-labelledby="context-title">
+          <h2 id="context-title">1 · 工艺上下文</h2>
+          <label for="context-select">选择工艺上下文</label>
+          <select id="context-select"><option value="">请选择上下文，不自动创建任务</option></select>
+          <div id="context-summary" class="result empty">选择上下文后查看设备、质量与四参数。</div>
+          <div id="context-parameters" class="table-wrap"></div>
+          <p class="muted">参数按服务端十进制字符串展示，单位取自上下文。新鲜度、缺失值、测量与样本资格由服务端复核。</p>
+          <button id="create-task" type="button" disabled>创建推荐任务（不运行）</button>
+        </section>
+        <section id="model-panel" class="panel" aria-labelledby="model-title">
+          <h2 id="model-title">行为克隆 BC · 来源与评测</h2>
+          <div id="model-summary" class="result empty">请选择上下文以查看本工厂、本人可见模型。</div>
+          <p class="muted">模型训练与注册仅支持本地离线 CLI；此处不自动训练，不接收权重或路径。置信度是动作建议置信度，不是效果预测。分组留出评测仍是合成评测。</p>
+        </section>
+      </div>
+      <section id="task-panel" class="panel" aria-labelledby="task-title">
+        <div class="section-heading"><h2 id="task-title">2 · 推荐任务与证据</h2><span id="task-count" class="badge">0 个任务</span></div>
+        <label for="task-select">打开 / 恢复已有任务（会切换到该任务的上下文）</label>
+        <select id="task-select"><option value="">请选择任务</option></select>
+        <div id="task-list" class="table-wrap"></div>
+        <div id="task-summary" class="result empty">创建或选择任务。创建与补缺不会自动调用模型。</div>
+        <div class="button-row"><button id="run-task" type="button" disabled>显式运行 / 恢复任务</button><button id="cancel-task" type="button" class="danger secondary" disabled>取消任务</button></div>
+        <p id="task-recovery-help" class="muted">运行请求等待真实最终 / 停止状态。取消可在运行期间独立发送；退出或重载只中断浏览器请求，不等于服务端取消。进程中断后仍为运行态时，可显式请求后端恢复；租约是否有效由服务端时钟决定，可能返回 busy。存在未知调用时先阻断并对账，不自动重试；没有未知调用时，显式恢复可继续任务。页面不会自行发起恢复或模型调用。</p>
+        <form id="supplement-form" class="inset" hidden>
+          <h3>人工补充缺失上下文</h3><p id="awaiting-fields"></p>
+          <div class="form-grid">
+            <div><label for="material-viscosity">材料黏度指标（合成无量纲，0.3–2.5）</label><input id="material-viscosity" type="number" min="0.3" max="2.5" step="any" disabled></div>
+            <div><label for="ambient-c">环境温度（degC，5–45）</label><input id="ambient-c" type="number" min="5" max="45" step="any" disabled></div>
+          </div>
+          <label for="supplement-note">人工数据来源与补充说明（必填）</label><textarea id="supplement-note" rows="2" maxlength="2000" required></textarea>
+          <button id="supplement-submit" type="submit" disabled>补充并生成新上下文版本（不运行）</button>
+          <p class="muted">只允许补原先为空的两项字段。旧证据与候选将失效，预算不会重置，观测时间不会自动刷新。</p>
+        </form>
+        <form id="reconcile-form" class="inset" hidden>
+          <h3>管理员 · 未知模型调用用量对账</h3>
+          <p>此操作只处理模型调用，不证明设备参数已生效，不解除托管进程清理未知锁。运行、阻断或取消任务仍有未知调用时可显式对账；服务端拒绝活跃租约，按服务端时钟处理过期 started 记录。对账不自动运行，已取消任务仍保持取消。</p>
+          <label for="reconcile-call">待对账 call_id（来自任务记录）</label><input id="reconcile-call" required maxlength="80" pattern="[A-Za-z0-9][A-Za-z0-9_.-]{0,79}">
+          <label for="reconcile-tokens">可核实的 token 用量；未知请留空（不等于 0）</label><input id="reconcile-tokens" type="number" min="0" max="100000" step="1">
+          <label for="reconcile-note">核查依据（必填）</label><textarea id="reconcile-note" required rows="2" maxlength="2000"></textarea>
+          <label class="check-label"><input id="reconcile-confirm" type="checkbox" required>我已核实该调用没有可使用的结果，不虚构回复或设备执行事实</label>
+          <button id="reconcile-submit" type="submit" disabled>提交无结果用量对账</button>
+        </form>
+        <h3>服务端签发证据 · 过程 / 经验 / BC</h3><div id="task-evidence" class="evidence-list empty">尚无证据。</div>
+        <h3>权威候选 · 增量与硬约束</h3><div id="task-candidate" class="empty">尚无已校验候选。</div>
+        <details class="inset"><summary>原创 BOP 硬约束示例（服务端为准）</summary>
+          <p>最多改变 2 个参数；原始与量化后的目标都必须合法，不以截断修复非法建议。使用最近网格、半点取偶数量化。</p>
+          <ul><li>温度 180–240 degC，网格 1，最大步长 6；速度 20–100 mm/s，网格 5，最大步长 10。</li><li>压力 30–70 MPa，网格 1，最大步长 4；冷却 8–30 s，网格 1，最大步长 3。</li><li>短射：温度 / 速度 / 压力只能增加；飞边：速度 / 压力只能减少；翘曲：温度只能减少，冷却只能增加；正常：不变。</li><li>温度 ≥ 230 degC 时冷却 ≥ 15 s；速度 &gt; 80 mm/s 时压力 ≤ 60 MPa。至少一个非零变更才可执行。</li></ul>
+        </details>
+      </section>
+      <section id="recommendation-panel" class="panel" aria-labelledby="recommendation-title">
+        <h2 id="recommendation-title">3 · 已提交推荐 · 独立人工审核</h2>
+        <label for="recommendation-select">选择已提交推荐</label><select id="recommendation-select"><option value="">请选择推荐，不默认批准</option></select>
+        <div id="recommendation-summary" class="result empty">任务提交仅产生待审核推荐。</div>
+        <div id="recommendation-candidate"></div>
+        <details><summary>推荐绑定的服务端证据</summary><div id="recommendation-evidence" class="evidence-list"></div></details>
+        <section class="untrusted" aria-labelledby="draft-title"><h3 id="draft-title">未审核的模型解释 · 非权威文本</h3><p id="model-draft">尚无解释。</p></section>
+        <form id="review-form" class="inset">
+          <p id="review-binding">审核绑定所选推荐的完整内容哈希；只有 reviewer / admin 可审核。</p>
+          <label for="review-decision">明确选择人工决定</label><select id="review-decision" required disabled><option value="">请选择，不预选批准或拒绝</option><option value="approved">批准（仍不执行）</option><option value="rejected">拒绝</option></select>
+          <label for="review-note">人工审核依据（必填）</label><textarea id="review-note" rows="3" maxlength="2000" required disabled></textarea>
+          <button id="review-submit" type="submit" disabled>提交人工审核决定</button>
+        </form>
+      </section>
+      <section id="execution-panel" class="panel" aria-labelledby="execution-title">
+        <h2 id="execution-title">4 · 仅合成设备 · 分步请求、应用、回读、观察</h2>
+        <p class="safety-inline"><strong>NOT production：这里实际更新的是本地合成设备，不连接生产设备。没有生产 exactly-once 保证。</strong></p>
+        <div class="execution-steps">
+          <form id="request-execution-form" class="inset"><h3>① 创建执行请求</h3><p>使用上方已批准推荐的当前完整哈希。仅创建请求，尚未应用参数。</p><label class="check-label"><input id="execution-confirm" type="checkbox" required disabled>我确认请求仅针对所选合成推荐，已核对参数与来源</label><button id="request-execution" type="submit" disabled>请求合成执行（不应用）</button></form>
+          <div class="inset"><h3>② 选择执行记录</h3><label for="execution-select">待处理 / 恢复已有执行</label><select id="execution-select"><option value="">请选择执行记录</option></select><div id="execution-summary" class="empty">尚未选择执行记录。</div></div>
+          <form id="apply-form" class="inset"><h3>③ 应用到合成设备</h3><p>只对 pending 显式应用。ACK 未知不盲重发，改用回读核对。</p><label class="check-label"><input id="apply-confirm" type="checkbox" required disabled>我确认只更新本地合成设备；应用不等于回读成功</label><button id="apply-execution" type="submit" class="danger" disabled>应用到合成设备（NOT production）</button></form>
+          <div class="inset"><h3>④ 独立回读</h3><p>仅对 applied / unknown 核验真实本地回执、目标与设备版本。没有匹配回执不能认定成功。</p><button id="readback-execution" type="button" disabled>读取设备回执并核验</button></div>
+          <div class="inset"><h3>⑤ 成熟效果观察</h3><p>有效回读后至少 60 秒，样本由服务端确定。不成熟时明确报错，不显示虚构改善，不提供 seed 刷选。</p><button id="observe-recommendation" type="button" disabled>请求成熟合成观察</button></div>
+        </div>
+        <h3>合成设备目标与回读证据</h3><div id="execution-detail" class="empty">尚无设备回读。</div>
+        <h3>配对模拟比较 · 不是生产前后实测基线</h3><div id="observation-summary" class="empty">尚无成熟观察结果。不证明现场因果效果。</div>
+      </section>
+      <section id="audit-panel" class="panel" aria-labelledby="audit-title"><div class="section-heading"><h2 id="audit-title">5 · 本人授权范围审计</h2><span class="muted">列表由服务端限量；重载获取最新状态</span></div><div id="audit-list" class="empty">尚无审计记录。</div></section>
+    </div>
+  </main>
+  <footer>原创合成工艺参数推荐 · 本地服务 · 权限、版本、哈希与约束均由服务端重新核验</footer>
+</body>
+</html>
